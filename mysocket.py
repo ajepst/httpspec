@@ -5,9 +5,10 @@ import re
 s = socket.socket ( socket.AF_INET, socket.SOCK_STREAM)
 #now connect to the web server on port 80
 # - the normal http port
-#s.connect(("www.slicehost.com", 80))
-s.connect(("www.foofish.org", 80))
-s.send('GET / HTTP/1.1\nHost:www.foofish.org\n\n')
+s.connect(("www.slicehost.com", 80))
+#s.connect(("www.foofish.org", 80))
+#s.send('GET / HTTP/1.1\r\nHost:www.foofish.org\r\n\r\n')
+s.send('GET / HTTP/1.1\r\nHost:www.slicehost.com\r\n\r\n')
 
 #data = s.recv(100)
 
@@ -42,7 +43,7 @@ def fetchlines(s):
              lines = data.split("\r\n")
              print "linecount: " + str(len(lines)) 
         for index, line in enumerate(lines):
-             print line
+            # print line
              if readyToCount and skipNextLine == False:
                  runningTotal += len(line)
                  print "total " + str(runningTotal) 
@@ -54,7 +55,7 @@ def fetchlines(s):
                  if (re.match("Content-Length: \d+$", line)):
                       # bytecount is the number above, not chunked
                       bytecount = int(line[line.find(": ")+2 : len(line)], 16)
-                      print "LINE------------------>" +bytecount
+                      print "LINE------------------>" +str(bytecount)
                       allContent = True
                       readyToCount = True
              if (allContent==False and readyToCount == False):
