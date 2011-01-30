@@ -1,32 +1,36 @@
 import socket
 import time
 import re
+import sys
+import string
+
+def geturl(arguments):
+    if len(arguments) == 1:
+       raise Exception("url is required")
+    m = re.match("((\w+)://)?([\w.]+)(:(\d+))?/?", arguments[1])
+    protocol = m.group(2)
+    host = m.group(3)
+    port = m.group(5)
+    url =  {}
+    if protocol != None:
+        url['protocol'] = string.upper(protocol)
+    else:
+        url['protocol'] = "HTTP"
+    if port != None:
+        url['port'] = int(port)
+    else:
+        url['port'] = 80
+    url['host'] = host
+    return url 
+
+
+targeturl = geturl(sys.argv)
 
 s = socket.socket ( socket.AF_INET, socket.SOCK_STREAM)
 #now connect to the web server on port 80
 # - the normal http port
-#s.connect(("www.slicehost.com", 80))
-s.connect(("www.foofish.org", 80))
-s.send('GET / HTTP/1.1\r\nHost:www.foofish.org\r\n\r\n')
-#s.send('GET / HTTP/1.1\r\nHost:www.slicehost.com\r\n\r\n')
-
-#data = s.recv(100)
-
-#print data
-#fullString = data
-
-#while data: 
-    #    starttime = time.time()
-#    data = s.recv(3000)
-    #    fullString += data
-#    print data
-    #print "received %d bytes in %d secs " %(len(data),time.time()-starttime) 
-#    data =  s.recv(100)
-#s.close()
-#print fullString[:512] 
-
-#for c in iter(lambda: f.read(1),'\n'):
-#        pass
+s.connect((targeturl['host'], targeturl['port']))
+s.send('GET / '+targeturl['protocol']+'/1.1\r\nHost:'+targeturl['host']+'\r\n\r\n')
 
 def getLine(s):
     line = '' 
@@ -36,7 +40,7 @@ def getLine(s):
     return line
 
 def getHeader(s):
-    header =[] 
+    header = [] 
     for line in iter(lambda:getLine(s), ''):
         header.append(line) 
     #    print line 
@@ -56,7 +60,7 @@ def findNextNonEmptyLine(s):
 
 def safeGet(s, contentLength):
     getLength = 1024
-    received ='' 
+    received = '' 
     while (len(received) + getLength) < contentLength:
         received += s.recv(getLength)
     remaining = contentLength - len(received)
