@@ -7,10 +7,11 @@ import string
 def geturl(arguments):
     if len(arguments) == 1:
        raise Exception("url is required")
-    m = re.match("((\w+)://)?([\w.]+)(:(\d+))?/?", arguments[1])
+    m = re.match("((\w+)://)?([\w.]+)(:(\d+))?(/.*)?", arguments[1])
     protocol = m.group(2)
     host = m.group(3)
     port = m.group(5)
+    path = m.group(6)
     url =  {}
     if protocol != None:
         url['protocol'] = string.upper(protocol)
@@ -20,6 +21,10 @@ def geturl(arguments):
         url['port'] = int(port)
     else:
         url['port'] = 80
+    if path != None:
+        url['path'] = path
+    else:
+        url['path'] = "/"
     url['host'] = host
     return url 
 
@@ -30,7 +35,7 @@ s = socket.socket ( socket.AF_INET, socket.SOCK_STREAM)
 #now connect to the web server on port 80
 # - the normal http port
 s.connect((targeturl['host'], targeturl['port']))
-s.send('GET / '+targeturl['protocol']+'/1.1\r\nHost:'+targeturl['host']+'\r\n\r\n')
+s.send('GET ' + targeturl['path'] + ' ' + targeturl['protocol'] + '/1.1\r\nHost:' + targeturl['host'] + '\r\n\r\n')
 
 def getLine(s):
     line = '' 
@@ -63,8 +68,12 @@ def safeGet(s, contentLength):
     received = '' 
     while (len(received) + getLength) < contentLength:
         received += s.recv(getLength)
-    remaining = contentLength - len(received)
-    received += s.recv(remaining)
+    while len(received) < contentLength: 
+        remaining = contentLength - len(received)
+        extra = s.recv(remaining)
+        received += extra
+    if len(received) < contentLength:
+        print "WE ARE SHORT FOR SOME REASON!!"
     return received
 
 def fetchContent(s):
@@ -80,6 +89,8 @@ def fetchContent(s):
     chunkLength = int(getLine(s), 16)
     while (chunkLength > 0):
         content += safeGet(s, chunkLength)
+        print len(content)
+        print chunkLength
         chunkLength = int(findNextNonEmptyLine(s), 16)
     return content 
  
