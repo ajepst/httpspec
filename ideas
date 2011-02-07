@@ -1,0 +1,9 @@
+make url dynamic
+make get, etc dynamic
+possibly different things based on return code
+different things based on content type (html display, text/plan display, binary... something else
+do this :  8.2.4 Client Behavior if Server Prematurely Closes Connection
+implement get params
+implement post
+cache?
+
