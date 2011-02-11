@@ -57,6 +57,13 @@ def getContentLength(header):
             return int(line[line.find(": ")+2 : len(line)])
     return -1
 
+def getStatusCode(header):
+    for line in header:
+        matches = re.search("^HTTP/\d+\.\d+ (\d{3})", line)
+        if matches != None:
+            return int(matches.group(1)) 
+    return -1
+
 def findNextNonEmptyLine(s):
     line = ''
     while line == '':
@@ -72,13 +79,22 @@ def safeGet(s, contentLength):
         remaining = contentLength - len(received)
         extra = s.recv(remaining)
         received += extra
-    if len(received) < contentLength:
-        print "WE ARE SHORT FOR SOME REASON!!"
     return received
+
+def getSpecialMessage(code):
+    if code >= 300 and code < 400:
+        return "Page has moved"
+    if code >= 400 and code < 500:
+        return "Bad Request" 
+    if code >= 500 and code < 600:
+        return "Server Error"
 
 def fetchContent(s):
 
     header = getHeader(s)
+    statusCode = getStatusCode(header)
+    if statusCode != 200:
+        return getSpecialMessage(statusCode)
     contentLength = getContentLength(header)   
     if contentLength > 0:
         #full content chunk
@@ -89,8 +105,6 @@ def fetchContent(s):
     chunkLength = int(getLine(s), 16)
     while (chunkLength > 0):
         content += safeGet(s, chunkLength)
-        print len(content)
-        print chunkLength
         chunkLength = int(findNextNonEmptyLine(s), 16)
     return content 
  
