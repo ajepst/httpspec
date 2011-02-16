@@ -3,29 +3,27 @@ import time
 import re
 import sys
 import string
-
+import urlparse
 
 def main():
-    sock = get_socket_to_url()
+    if len(sys.argv) == 1:
+        raise Exception("url is required")
+
+    target_url = get_url(sys.argv[1])
+    sock = get_socket_to_url(target_url)
     print fetch_content(sock)
 
 
-def get_socket_to_url():
-    target_url = get_url(sys.argv)
-
+def get_socket_to_url(target_url):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #now connect to the web server on port 80
-    # - the normal http port
     sock.connect((target_url['host'], target_url['port']))
     sock.send('GET ' + target_url['path'] + ' ' + target_url['protocol'] +
     '/1.1\r\nHost:' + target_url['host'] + '\r\n\r\n')
     return sock
 
 
-def get_url(arguments):
-    if len(arguments) == 1:
-        raise Exception("url is required")
-    m = re.match("((\w+)://)?([\w.]+)(:(\d+))?(/.*)?", arguments[1])
+def get_url(unparsed_url):
+    m = re.match("((\w+)://)?([\w.]+)(:(\d+))?(/.*)?", unparsed_url)
     protocol = m.group(2)
     host = m.group(3)
     port = m.group(5)
