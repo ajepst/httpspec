@@ -4,7 +4,22 @@ import re
 import sys
 import string
 
-def geturl(arguments):
+def main():
+    sock = get_socket_to_url()
+    print fetch_content(sock)
+
+def get_socket_to_url():
+    target_url = get_url(sys.argv)
+
+    sock = socket.socket ( socket.AF_INET, socket.SOCK_STREAM)
+    #now connect to the web server on port 80
+    # - the normal http port
+    sock.connect((target_url['host'], target_url['port']))
+    sock.send('GET ' + target_url['path'] + ' ' + target_url['protocol'] +
+    '/1.1\r\nHost:' + target_url['host'] + '\r\n\r\n')
+    return sock 
+
+def get_url(arguments):
     if len(arguments) == 1:
        raise Exception("url is required")
     m = re.match("((\w+)://)?([\w.]+)(:(\d+))?(/.*)?", arguments[1])
@@ -28,60 +43,45 @@ def geturl(arguments):
     url['host'] = host
     return url 
 
+def fetch_content(sock):
+    header = get_header(sock)
+    status_code = get_status_code(header)
+    if status_code < 200 or status_code > 299:
+        return get_special_message(status_code)
+    content_length = get_content_length(header)   
+    if content_length > 0:
+        #full content chunk
+        return safe_get(sock, content_length)
+    # continue here, we are chunked into pieces
+    # for now put loop here, extract out getting the count 
+    content = ""
+    chunk_length = int(get_line(sock), 16)
+    while (chunk_length > 0):
+        content += safe_get(sock, chunk_length)
+        chunk_length = int(find_next_non_empty_line(sock), 16)
+    return content 
 
-targeturl = geturl(sys.argv)
+def get_header(sock):
+    header = [] 
+    for line in iter(lambda:get_line(sock), ''):
+        header.append(line) 
+    return header
 
-s = socket.socket ( socket.AF_INET, socket.SOCK_STREAM)
-#now connect to the web server on port 80
-# - the normal http port
-s.connect((targeturl['host'], targeturl['port']))
-s.send('GET ' + targeturl['path'] + ' ' + targeturl['protocol'] + '/1.1\r\nHost:' + targeturl['host'] + '\r\n\r\n')
-
-def getLine(s):
+def get_line(sock):
     line = '' 
-    for l in iter(lambda: s.recv(1), '\r'):
+    for l in iter(lambda: sock.recv(1), '\r'):
         if ((l != '\n') and (l != '\r')):
             line += l
     return line
 
-def getHeader(s):
-    header = [] 
-    for line in iter(lambda:getLine(s), ''):
-        header.append(line) 
-    #    print line 
-    return header
-
-def getContentLength(header):
-    for line in header: 
-        if (re.match("Content-Length: \d+$", line)):
-            return int(line[line.find(": ")+2 : len(line)])
-    return -1
-
-def getStatusCode(header):
+def get_status_code(header):
     for line in header:
         matches = re.search("^HTTP/\d+\.\d+ (\d{3})", line)
         if matches != None:
             return int(matches.group(1)) 
     return -1
 
-def findNextNonEmptyLine(s):
-    line = ''
-    while line == '':
-        line = getLine(s)
-    return line
-
-def safeGet(s, contentLength):
-    getLength = 1024
-    received = '' 
-    while (len(received) + getLength) < contentLength:
-        received += s.recv(getLength)
-    while len(received) < contentLength: 
-        remaining = contentLength - len(received)
-        extra = s.recv(remaining)
-        received += extra
-    return received
-
-def getSpecialMessage(code):
+def get_special_message(code):
     if code >= 300 and code < 400:
         return "Page has moved"
     if code >= 400 and code < 500:
@@ -89,24 +89,29 @@ def getSpecialMessage(code):
     if code >= 500 and code < 600:
         return "Server Error"
 
-def fetchContent(s):
+def get_content_length(header):
+    for line in header: 
+        if (re.match("Content-Length: \d+$", line)):
+            return int(line[line.find(": ") + 2 : len(line)])
+    return -1
 
-    header = getHeader(s)
-    statusCode = getStatusCode(header)
-    if statusCode != 200:
-        return getSpecialMessage(statusCode)
-    contentLength = getContentLength(header)   
-    if contentLength > 0:
-        #full content chunk
-        return safeGet(s, contentLength)
-    # continue here, we are chunked into pieces
-    # for now put loop here, extract out getting the count 
-    content = ""
-    chunkLength = int(getLine(s), 16)
-    while (chunkLength > 0):
-        content += safeGet(s, chunkLength)
-        chunkLength = int(findNextNonEmptyLine(s), 16)
-    return content 
- 
+def find_next_non_empty_line(sock):
+    line = ''
+    while line == '':
+        line = get_line(sock)
+    return line
 
-print fetchContent(s) 
+def safe_get(sock, content_length):
+    get_length = 1024
+    received = '' 
+    while (len(received) + get_length) < content_length:
+        received += sock.recv(get_length)
+    while len(received) < content_length: 
+        remaining = content_length - len(received)
+        extra = sock.recv(remaining)
+        received += extra
+    return received
+
+
+if __name__ == "__main__":
+    main()
