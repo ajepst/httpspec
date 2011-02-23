@@ -3,7 +3,7 @@ import time
 import re
 import sys
 import string
-import urlparse
+from urlparse import urlparse
 
 def main():
     if len(sys.argv) == 1:
@@ -23,26 +23,24 @@ def get_socket_to_url(target_url):
 
 
 def get_url(unparsed_url):
-    m = re.match("((\w+)://)?([\w.]+)(:(\d+))?(/.*)?", unparsed_url)
-    protocol = m.group(2)
-    host = m.group(3)
-    port = m.group(5)
-    path = m.group(6)
+    if re.search("//", unparsed_url) is None:
+        unparsed_url = "//" + unparsed_url 
+    parsed_result = urlparse(unparsed_url)
     url = {}
-    if protocol != None:
-        url['protocol'] = string.upper(protocol)
-    else:
-        url['protocol'] = "HTTP"
-    if port != None:
-        url['port'] = int(port)
-    else:
-        url['port'] = 80
-    if path != None:
-        url['path'] = path
-    else:
+    url['host'] = parsed_result.netloc
+    if parsed_result.path == "":
         url['path'] = "/"
-    url['host'] = host
-    return url
+    else:
+        url['path'] = parsed_result.path
+    if parsed_result.port is None:
+        url['port'] = 80
+    else:
+        url['port'] = int(parsed_result.port)
+    if parsed_result.scheme  == "":
+        url['protocol'] = "HTTP"
+    else:
+        url['protocol'] = string.upper(parsed_result.scheme)
+    return url 
 
 
 def fetch_content(sock):
