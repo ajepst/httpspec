@@ -63,27 +63,29 @@ def fetch_content(sock):
 
 
 def get_header(sock):
-    header = []
+    header = {}
     for line in iter(lambda: get_line(sock), ''):
-        header.append(line)
+        line_items = line.split(': ')
+        if len(line_items) == 1:
+            header['status'] = line_items[0]
+        else:
+            header[string.lower(line_items[0])] = line_items[1]
     return header
 
 
 def get_line(sock):
     line = ''
-    for l in iter(lambda: sock.recv(1), '\r'):
-        if ((l != '\n') and (l != '\r')):
-            line += l
+    for char in iter(lambda: sock.recv(1), '\r'):
+        if ((char != '\n') and (char != '\r')):
+            line += char
     return line
 
 
 def get_status_code(header):
-    for line in header:
-        matches = re.search("^HTTP/\d+\.\d+ (\d{3})", line)
-        if matches != None:
-            return int(matches.group(1))
+    if 'status' in header:
+        matches = re.search("^HTTP/\d+\.\d+ (\d{3})", header['status'])
+        return int(matches.group(1))
     return -1
-
 
 def get_special_message(code):
     if code >= 300 and code < 400:
@@ -95,9 +97,8 @@ def get_special_message(code):
 
 
 def get_content_length(header):
-    for line in header:
-        if (re.match("Content-Length: \d+$", line)):
-            return int(line[line.find(": ") + 2:len(line)])
+    if 'content-length' in header:
+        return int(header['content-length'])
     return -1
 
 

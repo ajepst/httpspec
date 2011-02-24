@@ -7,6 +7,7 @@ implement post
 cache?
 handle non-200 200-ish codes (i.e. don't die
 maybe handle redirects
+ 301 moved permanatly - in Location
 
 style:
 fix witespace
